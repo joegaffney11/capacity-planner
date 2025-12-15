@@ -1,0 +1,46 @@
+Vendor Time per Lot (Business Days)
+
+
+Make the dashboard a single page rather than having the five tabs at the top. Data validation can be shown under a small dropdown as it was in the old dashboard. The total capacity per year should be shown on a card just as it was before, but with updated text outputs in accordance with the new processing file. The machine capacity can be shown on the right side of the dashboard, just as it was before, but now we can also have operator cards in that list too. Also, the edit assignment button and functionality from the old dashboard should be totally ignored.
+
+
+
+
+
+Remove the Upload Inputs button area. This dashboard will always read the local inputs file. 
+I made a critical conceptual error. Rather than showing seperate cards and capacities for operators, the setup details should be added to the machine cards under the drop down. Imagine the production line, the machine and operator work in series and the new setup can't begin until the previous machining operation has finished. The setup time should contribute to the capacity of the machine.
+
+Remove the Capacity Utilization line in the dropdown, since that data is already shown at the top. Remove the line in the details dropdowns. Remove the line under the data validation card.
+
+Under the total capacity card, add an Operator Capacity card. Show a list of all the operator names and their total setup minutes assigned. Remove the Upload Inputs button area. This dashboard will always read the local inputs file. 
+
+Change Resource Details to say Machine Capacity. Change Operator Capacity to say Operator Time. Move the effeciency factor from the side bar to a new card under the Total Capacity section. 
+
+Instead of having the efficiency card under its own Efficiency Factor header, put it directly under the Total Capacity header above the other card in that section. Put the Efficiency (0.1 - 1.0) text in line with the input box.
+
+Put one of the grey cards behind the efficiency input line. It can be the same size as the grey card behind the year buttons, just like it. Ensure the efficiency text is vertically centered with the input box.
+
+
+AT 9
+
+
+"Efficiency (0.1 - 1.0)" is not vertically centered with the input box, please change so that it is. The information at the top of each machine details dropdown should be in all in one line. Change the title text from Capacity Analysis Dashboard to Tufflex Production Capacity Utilization. The capacity_processor.py has 
+
+
+functionality so that if total capacity is greater than 100%, it will try to distribute minutes backwards to prior years if there is available capacity. This overflow function needs to be implimented in the dashboard and results shown in the Total Capacity dropdown. The total capacity percentage and bar should reflect the value after overflow has been distributed to any available time in prior years.
+ERROR FOR DATA VALIDATION.
+MAYBE IMPROVE AESTHETIC OF EFFICIENCY TAB.
+
+In the Total Capacity details dropdown, instead of saying "Raw Total" and "Total Capacity", just say "Total Capacity" and specify how many minutes were pulled from future years. Then, when the overflow distribution warning pops up, show the raw total under the adjusted capacity line.
+
+
+Remove the "⚠️" symbol before CRITICAL: text. Add some spacing on either side of the | characters in the machine details dropdowns. Instead of having +/- buttons for efficiency, add a slider.
+
+Ensure the "Efficiency (0.1 - 1.0)" text is centered vertically in the grey card. Add the text box back in between the "Efficiency (0.1 - 1.0)" text and the slider so users can type specific values.
+
+The efficiency slider is not working, the changes are not implimented when the slider value is changed. Also, reformat the efficiency box so the proportions look nice. Identify the code that controls the spacing in this box so I can review it.
+
+
+When there is a data validation error, automatically open the data validation dropdown.
+
+Create a new .txt file in this directory, write a concise explination about how the file is calculating capacity utlization percentage from the inputs. One of the main goals of this dashboard is to show what quantities would be "deliverable within the year" so explain how the overflow functionality contributes to this.
