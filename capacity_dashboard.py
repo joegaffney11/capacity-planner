@@ -261,15 +261,37 @@ class CapacityAnalyzer:
             vendor_minutes = vendor_days * 18 * 60  # 18-hour business days
             self.part_vendor_time[part_num] = vendor_minutes
 
-        # Operation to machine mapping
+        # Operation to machine mapping with percentage allocation
         machine_columns = [col for col in self.machine_allocation.columns
-                          if col not in ['Operations', 'Total']]
+                          if col not in ['Operations', 'Total']
+                          and not str(col).startswith('Unnamed:')
+                          and not str(col).startswith('_EMPTY')
+                          and pd.notna(col)
+                          and str(col).strip() != '']
+
         for idx, row in self.machine_allocation.iterrows():
             operation = row['Operations']
+            if pd.isna(operation):
+                continue
+
+            # Collect all machines with their allocation percentages
+            machine_allocations = []
+            total_allocation = 0
+
             for machine in machine_columns:
-                if row[machine] > 0:
-                    self.operation_to_machine[operation] = machine
-                    break
+                allocation = float(row[machine]) if pd.notna(row[machine]) else 0
+                if allocation > 0:
+                    machine_allocations.append({
+                        'machine': machine,
+                        'allocation': allocation
+                    })
+                    total_allocation += allocation
+
+            # Normalize to percentages (in case they don't add up to 100)
+            if machine_allocations and total_allocation > 0:
+                for ma in machine_allocations:
+                    ma['percentage'] = ma['allocation'] / total_allocation
+                self.operation_to_machine[operation] = machine_allocations
 
         # Machine to operator mapping
         setup_machine_columns = [col for col in self.setup_allocation.columns
@@ -373,27 +395,55 @@ class CapacityAnalyzer:
                 if pd.isna(setup_rate):
                     setup_rate = 0
 
-                # Apply efficiency factor
-                on_machine_minutes = quantity * machining_rate / self.efficiency
+                # Calculate total times before distribution
+                total_on_machine_minutes = quantity * machining_rate / self.efficiency
                 total_setup_time = num_lots * setup_rate / self.efficiency
-                setup_plus_machine = total_setup_time + on_machine_minutes
 
-                machine = self.operation_to_machine.get(operation, 'N/A')
-                operator = self.machine_to_operator.get(machine, 'N/A')
+                # Get machine allocations for this operation
+                machine_allocations = self.operation_to_machine.get(operation)
 
-                output_rows.append({
-                    'Part Number': part_number,
-                    'Operation': operation,
-                    'Machine': machine,
-                    'Operator': operator,
-                    'Quantity': quantity,
-                    'Machining Rate (minutes/part)': machining_rate,
-                    'Setup Rate (minutes/lot)': setup_rate,
-                    'On-Machine Minutes': on_machine_minutes,
-                    'Number of Lots': num_lots,
-                    'Total Setup Time (minutes)': total_setup_time,
-                    'Setup Time + Machine Time': setup_plus_machine
-                })
+                if not machine_allocations:
+                    # No machine allocation found - create N/A entry
+                    output_rows.append({
+                        'Part Number': part_number,
+                        'Operation': operation,
+                        'Machine': 'N/A',
+                        'Operator': 'N/A',
+                        'Quantity': quantity,
+                        'Machining Rate (minutes/part)': machining_rate,
+                        'Setup Rate (minutes/lot)': setup_rate,
+                        'On-Machine Minutes': total_on_machine_minutes,
+                        'Number of Lots': num_lots,
+                        'Total Setup Time (minutes)': total_setup_time,
+                        'Setup Time + Machine Time': total_setup_time + total_on_machine_minutes,
+                        'Allocation %': 100.0
+                    })
+                else:
+                    # Distribute time across all allocated machines
+                    for allocation in machine_allocations:
+                        machine = allocation['machine']
+                        percentage = allocation['percentage']
+
+                        on_machine_minutes = total_on_machine_minutes * percentage
+                        setup_time = total_setup_time * percentage
+                        setup_plus_machine = setup_time + on_machine_minutes
+
+                        operator = self.machine_to_operator.get(machine, 'N/A')
+
+                        output_rows.append({
+                            'Part Number': part_number,
+                            'Operation': operation,
+                            'Machine': machine,
+                            'Operator': operator,
+                            'Quantity': quantity,
+                            'Machining Rate (minutes/part)': machining_rate,
+                            'Setup Rate (minutes/lot)': setup_rate,
+                            'On-Machine Minutes': on_machine_minutes,
+                            'Number of Lots': num_lots,
+                            'Total Setup Time (minutes)': setup_time,
+                            'Setup Time + Machine Time': setup_plus_machine,
+                            'Allocation %': percentage * 100
+                        })
 
         return pd.DataFrame(output_rows) if output_rows else pd.DataFrame()
 
@@ -809,7 +859,7 @@ with col_right:
 
                     if not machine_df.empty:
                         # Format the dataframe for display
-                        display_df = machine_df[['Part Number', 'Operation', 'Quantity',
+                        display_df = machine_df[['Part Number', 'Operation', 'Allocation %', 'Quantity',
                                                 'On-Machine Minutes', 'Number of Lots',
                                                 'Total Setup Time (minutes)', 'Setup Time + Machine Time']].copy()
 
@@ -817,6 +867,7 @@ with col_right:
                         display_df = display_df.sort_values('Setup Time + Machine Time', ascending=False)
 
                         # Format numbers
+                        display_df['Allocation %'] = display_df['Allocation %'].round(0).astype(int)
                         display_df['Quantity'] = display_df['Quantity'].round(0).astype(int)
                         display_df['On-Machine Minutes'] = display_df['On-Machine Minutes'].round(0).astype(int)
                         display_df['Number of Lots'] = display_df['Number of Lots'].round(0).astype(int)

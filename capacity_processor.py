@@ -205,11 +205,27 @@ machine_columns = [
 operation_to_machine = {}
 for idx, row in machine_allocation.iterrows():
     operation = row['Operations']
-    # Find which machine has the first non-zero value
+    if pd.isna(operation):
+        continue
+
+    # Collect all machines with their allocation percentages
+    machine_allocations = []
+    total_allocation = 0
+
     for machine in machine_columns:
-        if row[machine] > 0:
-            operation_to_machine[operation] = machine
-            break
+        allocation = float(row[machine]) if pd.notna(row[machine]) else 0
+        if allocation > 0:
+            machine_allocations.append({
+                'machine': machine,
+                'allocation': allocation
+            })
+            total_allocation += allocation
+
+    # Normalize to percentages (in case they don't add up to 100)
+    if machine_allocations and total_allocation > 0:
+        for ma in machine_allocations:
+            ma['percentage'] = ma['allocation'] / total_allocation
+        operation_to_machine[operation] = machine_allocations
 
 # Create a mapping of machine to operator from setup allocation
 # Get machine columns from setup_allocation (excluding 'Operator' or first column)
@@ -283,35 +299,57 @@ with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
                 if pd.isna(setup_rate):
                     setup_rate = 0
                 
-                # Calculate on-machine minutes
-                on_machine_minutes = quantity * machining_rate / efficiency
-                
-                # Calculate total setup time
+                # Calculate total times before distribution
+                total_on_machine_minutes = quantity * machining_rate / efficiency
                 total_setup_time = num_lots * setup_rate / efficiency
-                
-                # Calculate setup time + machine time
-                setup_plus_machine = total_setup_time + on_machine_minutes
-                
-                # Get machine assignment for this operation
-                machine = operation_to_machine.get(operation, 'N/A')
-                
-                # Get operator assignment based on machine
-                operator = machine_to_operator.get(machine, 'N/A')
-                
-                # Add row to output
-                output_rows.append({
-                    'Part Number': part_number,
-                    'Operation': operation,
-                    'Machine': machine,
-                    'Operator': operator,
-                    'Quantity': quantity,
-                    'Machining Rate (minutes/part)': machining_rate,
-                    'Setup Rate (minutes/lot)': setup_rate,
-                    'On-Machine Minutes': on_machine_minutes,
-                    'Number of Lots': num_lots,
-                    'Total Setup Time (minutes)': total_setup_time,
-                    'Setup Time + Machine Time': setup_plus_machine
-                })
+
+                # Get machine allocations for this operation
+                machine_allocations = operation_to_machine.get(operation)
+
+                if not machine_allocations:
+                    # No machine allocation found - create N/A entry
+                    output_rows.append({
+                        'Part Number': part_number,
+                        'Operation': operation,
+                        'Machine': 'N/A',
+                        'Operator': 'N/A',
+                        'Quantity': quantity,
+                        'Machining Rate (minutes/part)': machining_rate,
+                        'Setup Rate (minutes/lot)': setup_rate,
+                        'On-Machine Minutes': total_on_machine_minutes,
+                        'Number of Lots': num_lots,
+                        'Total Setup Time (minutes)': total_setup_time,
+                        'Setup Time + Machine Time': total_setup_time + total_on_machine_minutes,
+                        'Allocation %': 100.0
+                    })
+                else:
+                    # Distribute time across all allocated machines
+                    for allocation in machine_allocations:
+                        machine = allocation['machine']
+                        percentage = allocation['percentage']
+
+                        on_machine_minutes = total_on_machine_minutes * percentage
+                        setup_time = total_setup_time * percentage
+                        setup_plus_machine = setup_time + on_machine_minutes
+
+                        # Get operator assignment based on machine
+                        operator = machine_to_operator.get(machine, 'N/A')
+
+                        # Add row to output
+                        output_rows.append({
+                            'Part Number': part_number,
+                            'Operation': operation,
+                            'Machine': machine,
+                            'Operator': operator,
+                            'Quantity': quantity,
+                            'Machining Rate (minutes/part)': machining_rate,
+                            'Setup Rate (minutes/lot)': setup_rate,
+                            'On-Machine Minutes': on_machine_minutes,
+                            'Number of Lots': num_lots,
+                            'Total Setup Time (minutes)': setup_time,
+                            'Setup Time + Machine Time': setup_plus_machine,
+                            'Allocation %': percentage * 100
+                        })
         
         # Create DataFrame for this year
         if output_rows:
@@ -320,10 +358,10 @@ with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
         else:
             # Create empty sheet with headers if no data
             empty_df = pd.DataFrame(columns=[
-                'Part Number', 'Operation', 'Machine', 'Operator', 'Quantity', 
+                'Part Number', 'Operation', 'Machine', 'Operator', 'Quantity',
                 'Machining Rate (minutes/part)', 'Setup Rate (minutes/lot)',
-                'On-Machine Minutes', 'Number of Lots', 
-                'Total Setup Time (minutes)', 'Setup Time + Machine Time'
+                'On-Machine Minutes', 'Number of Lots',
+                'Total Setup Time (minutes)', 'Setup Time + Machine Time', 'Allocation %'
             ])
             empty_df.to_excel(writer, sheet_name=str(year), index=False)
 

@@ -548,7 +548,7 @@
                     this.partVendorTime[partNum] = vendorMinutes;
                 });
 
-                // Operation to machine mapping
+                // Operation to machine mapping with percentage allocation
                 // Filter out empty/unnamed columns that Excel leaves behind
                 const machineColumns = Object.keys(this.machineAllocation[0])
                     .filter(col =>
@@ -564,11 +564,27 @@
                     const operation = row['Operations'];
                     if (!operation) return;
 
+                    // Collect all machines with their allocation percentages
+                    const machineAllocations = [];
+                    let totalAllocation = 0;
+
                     for (const machine of machineColumns) {
-                        if (row[machine] > 0) {
-                            this.operationToMachine[operation.toString().trim()] = machine.trim();
-                            break;
+                        const allocation = parseFloat(row[machine]) || 0;
+                        if (allocation > 0) {
+                            machineAllocations.push({
+                                machine: machine.trim(),
+                                allocation: allocation
+                            });
+                            totalAllocation += allocation;
                         }
+                    }
+
+                    // Normalize to percentages (in case they don't add up to 100)
+                    if (machineAllocations.length > 0 && totalAllocation > 0) {
+                        machineAllocations.forEach(ma => {
+                            ma.percentage = ma.allocation / totalAllocation;
+                        });
+                        this.operationToMachine[operation.toString().trim()] = machineAllocations;
                     }
                 });
 
@@ -745,26 +761,56 @@
                         const setupRateOp = Object.keys(this.setupRates[idx] || {}).find(k => k.trim() === operation);
                         const setupRate = this.setupRates[idx]?.[setupRateOp] || 0;
 
-                        const onMachineMinutes = quantity * machiningRate / this.efficiency;
+                        // Calculate total times before distribution
+                        const totalOnMachineMinutes = quantity * machiningRate / this.efficiency;
                         const totalSetupTime = numLots * setupRate / this.efficiency;
-                        const setupPlusMachine = totalSetupTime + onMachineMinutes;
 
-                        const machine = this.operationToMachine[operation] || 'N/A';
-                        const operator = this.machineToOperator[machine] || 'N/A';
+                        // Get machine allocations for this operation
+                        const machineAllocations = this.operationToMachine[operation];
 
-                        outputRows.push({
-                            'Part Number': partNumber,
-                            'Operation': operation,
-                            'Machine': machine,
-                            'Operator': operator,
-                            'Quantity': quantity,
-                            'Machining Rate (minutes/part)': machiningRate,
-                            'Setup Rate (minutes/lot)': setupRate,
-                            'On-Machine Minutes': onMachineMinutes,
-                            'Number of Lots': numLots,
-                            'Total Setup Time (minutes)': totalSetupTime,
-                            'Setup Time + Machine Time': setupPlusMachine
-                        });
+                        if (!machineAllocations || machineAllocations.length === 0) {
+                            // No machine allocation found - create N/A entry
+                            outputRows.push({
+                                'Part Number': partNumber,
+                                'Operation': operation,
+                                'Machine': 'N/A',
+                                'Operator': 'N/A',
+                                'Quantity': quantity,
+                                'Machining Rate (minutes/part)': machiningRate,
+                                'Setup Rate (minutes/lot)': setupRate,
+                                'On-Machine Minutes': totalOnMachineMinutes,
+                                'Number of Lots': numLots,
+                                'Total Setup Time (minutes)': totalSetupTime,
+                                'Setup Time + Machine Time': totalSetupTime + totalOnMachineMinutes
+                            });
+                        } else {
+                            // Distribute time across all allocated machines
+                            machineAllocations.forEach(allocation => {
+                                const machine = allocation.machine;
+                                const percentage = allocation.percentage;
+
+                                const onMachineMinutes = totalOnMachineMinutes * percentage;
+                                const setupTime = totalSetupTime * percentage;
+                                const setupPlusMachine = setupTime + onMachineMinutes;
+
+                                const operator = this.machineToOperator[machine] || 'N/A';
+
+                                outputRows.push({
+                                    'Part Number': partNumber,
+                                    'Operation': operation,
+                                    'Machine': machine,
+                                    'Operator': operator,
+                                    'Quantity': quantity,
+                                    'Machining Rate (minutes/part)': machiningRate,
+                                    'Setup Rate (minutes/lot)': setupRate,
+                                    'On-Machine Minutes': onMachineMinutes,
+                                    'Number of Lots': numLots,
+                                    'Total Setup Time (minutes)': setupTime,
+                                    'Setup Time + Machine Time': setupPlusMachine,
+                                    'Allocation %': percentage * 100
+                                });
+                            });
+                        }
                     });
                 });
 
@@ -1238,6 +1284,7 @@
                             <tr>
                                 <th>Part Number</th>
                                 <th>Operation</th>
+                                <th>Alloc %</th>
                                 <th>Quantity</th>
                                 <th>On-Machine Minutes</th>
                                 <th>Number of Lots</th>
@@ -1249,10 +1296,12 @@
                 `;
 
                 sortedRows.forEach(row => {
+                    const allocPct = row['Allocation %'] != null ? row['Allocation %'].toFixed(0) + '%' : '100%';
                     html += `
                         <tr>
                             <td>${row['Part Number']}</td>
                             <td>${row['Operation']}</td>
+                            <td>${allocPct}</td>
                             <td>${Math.round(row['Quantity']).toLocaleString()}</td>
                             <td>${Math.round(row['On-Machine Minutes']).toLocaleString()}</td>
                             <td>${Math.round(row['Number of Lots']).toLocaleString()}</td>
