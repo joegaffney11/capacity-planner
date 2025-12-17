@@ -549,8 +549,16 @@
                 });
 
                 // Operation to machine mapping
+                // Filter out empty/unnamed columns that Excel leaves behind
                 const machineColumns = Object.keys(this.machineAllocation[0])
-                    .filter(col => col !== 'Operations' && col !== 'Total');
+                    .filter(col =>
+                        col !== 'Operations' &&
+                        col !== 'Total' &&
+                        !col.startsWith('Unnamed:') &&
+                        !col.startsWith('_EMPTY') &&
+                        !col.startsWith('__EMPTY') &&
+                        col.trim() !== ''
+                    );
 
                 this.machineAllocation.forEach(row => {
                     const operation = row['Operations'];
@@ -565,8 +573,16 @@
                 });
 
                 // Machine to operator mapping
+                // Filter out empty/unnamed columns that Excel leaves behind
                 const setupMachineColumns = Object.keys(this.setupAllocation[0])
-                    .filter(col => col !== '__EMPTY' && col !== 'Operator' && col !== 'Unnamed: 0');
+                    .filter(col =>
+                        col !== 'Operator' &&
+                        col !== 'Unnamed: 0' &&
+                        !col.startsWith('Unnamed:') &&
+                        !col.startsWith('_EMPTY') &&
+                        !col.startsWith('__EMPTY') &&
+                        col.trim() !== ''
+                    );
 
                 setupMachineColumns.forEach(machine => {
                     const operatorValue = this.setupAllocation[0][machine];
@@ -647,14 +663,29 @@
                 });
 
                 // Validate machines
+                // Filter out empty/unnamed columns that Excel leaves behind
                 const allocationMachines = new Set(
                     Object.keys(this.machineAllocation[0])
-                        .filter(col => col !== 'Operations' && col !== 'Total')
+                        .filter(col =>
+                            col !== 'Operations' &&
+                            col !== 'Total' &&
+                            !col.startsWith('Unnamed:') &&
+                            !col.startsWith('_EMPTY') &&
+                            !col.startsWith('__EMPTY') &&
+                            col.trim() !== ''
+                        )
                         .map(col => col.trim())
                 );
                 const setupMachines = new Set(
                     Object.keys(this.setupAllocation[0])
-                        .filter(col => col !== '__EMPTY' && col !== 'Operator' && col !== 'Unnamed: 0')
+                        .filter(col =>
+                            col !== 'Operator' &&
+                            col !== 'Unnamed: 0' &&
+                            !col.startsWith('Unnamed:') &&
+                            !col.startsWith('_EMPTY') &&
+                            !col.startsWith('__EMPTY') &&
+                            col.trim() !== ''
+                        )
                         .map(col => col.trim())
                 );
 
