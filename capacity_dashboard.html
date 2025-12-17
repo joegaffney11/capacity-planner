@@ -585,6 +585,12 @@
                             ma.percentage = ma.allocation / totalAllocation;
                         });
                         this.operationToMachine[operation.toString().trim()] = machineAllocations;
+
+                        // Debug logging for multi-machine operations
+                        if (machineAllocations.length > 1) {
+                            console.log(`Operation "${operation}" split across ${machineAllocations.length} machines:`,
+                                machineAllocations.map(m => `${m.machine} (${(m.percentage * 100).toFixed(0)}%)`).join(', '));
+                        }
                     }
                 });
 
@@ -785,6 +791,10 @@
                             });
                         } else {
                             // Distribute time across all allocated machines
+                            if (machineAllocations.length > 1) {
+                                console.log(`Distributing operation "${operation}" for part "${partNumber}" across ${machineAllocations.length} machines`);
+                            }
+
                             machineAllocations.forEach(allocation => {
                                 const machine = allocation.machine;
                                 const percentage = allocation.percentage;
