@@ -1294,7 +1294,6 @@
                             <tr>
                                 <th>Part Number</th>
                                 <th>Operation</th>
-                                <th>Alloc %</th>
                                 <th>Quantity</th>
                                 <th>On-Machine Minutes</th>
                                 <th>Number of Lots</th>
@@ -1306,12 +1305,10 @@
                 `;
 
                 sortedRows.forEach(row => {
-                    const allocPct = row['Allocation %'] != null ? row['Allocation %'].toFixed(0) + '%' : '100%';
                     html += `
                         <tr>
                             <td>${row['Part Number']}</td>
                             <td>${row['Operation']}</td>
-                            <td>${allocPct}</td>
                             <td>${Math.round(row['Quantity']).toLocaleString()}</td>
                             <td>${Math.round(row['On-Machine Minutes']).toLocaleString()}</td>
                             <td>${Math.round(row['Number of Lots']).toLocaleString()}</td>

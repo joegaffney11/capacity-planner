@@ -859,7 +859,7 @@ with col_right:
 
                     if not machine_df.empty:
                         # Format the dataframe for display
-                        display_df = machine_df[['Part Number', 'Operation', 'Allocation %', 'Quantity',
+                        display_df = machine_df[['Part Number', 'Operation', 'Quantity',
                                                 'On-Machine Minutes', 'Number of Lots',
                                                 'Total Setup Time (minutes)', 'Setup Time + Machine Time']].copy()
 
@@ -867,7 +867,6 @@ with col_right:
                         display_df = display_df.sort_values('Setup Time + Machine Time', ascending=False)
 
                         # Format numbers
-                        display_df['Allocation %'] = display_df['Allocation %'].round(0).astype(int)
                         display_df['Quantity'] = display_df['Quantity'].round(0).astype(int)
                         display_df['On-Machine Minutes'] = display_df['On-Machine Minutes'].round(0).astype(int)
                         display_df['Number of Lots'] = display_df['Number of Lots'].round(0).astype(int)
