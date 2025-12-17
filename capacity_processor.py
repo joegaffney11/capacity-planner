@@ -124,10 +124,26 @@ else:
 
 # Validate machines across sheets
 # Get machines from Machine Allocation (column headers excluding 'Operations' and 'Total')
-allocation_machines = set([col for col in machine_allocation.columns if col not in ['Operations', 'Total']])
+# Also exclude empty/unnamed columns that pandas creates from empty Excel columns
+allocation_machines = set([
+    col for col in machine_allocation.columns
+    if col not in ['Operations', 'Total']
+    and not str(col).startswith('Unnamed:')
+    and not str(col).startswith('_EMPTY')
+    and pd.notna(col)
+    and str(col).strip() != ''
+])
 
 # Get machines from Setup Allocation (column headers excluding 'Unnamed: 0' and 'Operator')
-setup_machines = set([col for col in setup_allocation.columns if col not in ['Unnamed: 0', 'Operator']])
+# Also exclude empty/unnamed columns
+setup_machines = set([
+    col for col in setup_allocation.columns
+    if col not in ['Unnamed: 0', 'Operator']
+    and not str(col).startswith('Unnamed:')
+    and not str(col).startswith('_EMPTY')
+    and pd.notna(col)
+    and str(col).strip() != ''
+])
 
 # Create merged machines list
 all_machines = allocation_machines | setup_machines
@@ -176,7 +192,15 @@ for idx, row in vendor_time.iterrows():
 # Create a mapping of operation to machine
 # Machine allocation shows which machine(s) handle each operation
 # Get machine column names from the dataframe (excluding 'Operations' and 'Total')
-machine_columns = [col for col in machine_allocation.columns if col not in ['Operations', 'Total']]
+# Also exclude empty/unnamed columns
+machine_columns = [
+    col for col in machine_allocation.columns
+    if col not in ['Operations', 'Total']
+    and not str(col).startswith('Unnamed:')
+    and not str(col).startswith('_EMPTY')
+    and pd.notna(col)
+    and str(col).strip() != ''
+]
 
 operation_to_machine = {}
 for idx, row in machine_allocation.iterrows():
@@ -189,7 +213,16 @@ for idx, row in machine_allocation.iterrows():
 
 # Create a mapping of machine to operator from setup allocation
 # Get machine columns from setup_allocation (excluding 'Operator' or first column)
-setup_machine_columns = [col for col in setup_allocation.columns if col != 'Unnamed: 0' and col != 'Operator']
+# Also exclude empty/unnamed columns
+setup_machine_columns = [
+    col for col in setup_allocation.columns
+    if col != 'Unnamed: 0'
+    and col != 'Operator'
+    and not str(col).startswith('Unnamed:')
+    and not str(col).startswith('_EMPTY')
+    and pd.notna(col)
+    and str(col).strip() != ''
+]
 
 machine_to_operator = {}
 for machine in setup_machine_columns:
