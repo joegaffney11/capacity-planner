@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capacity Analysis Dashboard</title>
+
+    <!-- Import Inter font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- SheetJS library for Excel parsing -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <!-- Plotly for charts -->
+    <script src="https://cdn.plotly.ly/plotly-2.27.0.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+	    background: rgb(0,0,0);
+	    background: linear-gradient(159deg, rgba(0,0,0,1) 0%, rgb(0, 0, 139) 100%);
+            font-family: 'Inter', sans-serif;
+            color: #f3f4f6;
+            padding: 2rem 3rem;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        h1 {
+            background: linear-gradient(135deg, #60a5fa, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 1rem;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(59, 130, 246, 0.3);
+            margin-bottom: 2rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        h2 {
+            color: rgb(255, 255, 255);
+            padding: 0.5rem 0;
+            border-bottom: 2px solid #60a5fa;
+            margin: 1rem 0;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        h3 {
+            color: rgb(255, 255, 255);
+            margin-bottom: 0;
+            font-size: 2rem;
+        }
+
+        .container {
+            background: linear-gradient(145deg, #2a2a3a, #36364d);
+            border-radius: 12px;
+            padding: 0.5rem;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 1rem;
+        }
+
+        .container > *:first-child {
+            margin-top: 0;
+        }
+
+        .container > *:last-child {
+            margin-bottom: 0;
+        }
+
+        .upload-section {
+            text-align: center;
+            padding: 0.5rem;
+        }
+
+        .upload-section > *:first-child {
+            margin-top: 0;
+        }
+
+        .upload-section > *:last-child {
+            margin-bottom: 0;
+        }
+
+        .upload-input {
+            display: none;
+        }
+
+        .upload-label {
+            display: inline-block;
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            color: white;
+            padding: .5rem 2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .upload-label:hover {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .info-box {
+            background: linear-gradient(145deg, #2a2a3a, #36364d);
+            color: #60a5fa;
+            border-radius: 10px;
+            padding: 0.5rem;
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            margin-top: 0.5rem;
+        }
+
+        .success-box {
+            background: linear-gradient(145deg, #2a2a3a, #36364d);
+            color: #10b981;
+            border-radius: 10px;
+            padding: 0.5rem;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            margin-top: 0.5rem;
+        }
+
+        .error-box {
+            background: linear-gradient(145deg, #2a2a3a, #36364d);
+            color: #ef4444;
+            border-radius: 10px;
+            padding: 0.5rem;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            margin-top: 0.5rem;
+        }
+
+        .warning-box {
+            background: linear-gradient(145deg, #2a2a3a, #36364d);
+            color: #f59e0b;
+            border-radius: 10px;
+            padding: 0.5rem;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            margin-top: 0.5rem;
+        }
+
+        .info-box > *:first-child,
+        .success-box > *:first-child,
+        .error-box > *:first-child,
+        .warning-box > *:first-child {
+            margin-top: 0;
+        }
+
+        .info-box > *:last-child,
+        .success-box > *:last-child,
+        .error-box > *:last-child,
+        .warning-box > *:last-child {
+            margin-bottom: 0;
+        }
+
+        .two-column-layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .year-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .year-button {
+            flex: 1;
+            background: linear-gradient(145deg, #2a2a3a, #36364d);
+            color: #f3f4f6;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .year-button:hover {
+            background: linear-gradient(145deg, #35354a, #3f3f57);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .year-button.active {
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .capacity-bar-container {
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+
+        .capacity-percentage {
+            text-align: center;
+            font-weight: 700;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .capacity-bar {
+            width: 100%;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .capacity-bar-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .efficiency-input-row {
+            display: grid;
+            grid-template-columns: 0.6fr 1fr;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .efficiency-label {
+            display: flex;
+            align-items: center;
+            height: 40px;
+            font-weight: 600;
+        }
+
+        .efficiency-input {
+            background: linear-gradient(145deg, #1e1e2e, #252539);
+            color: #f3f4f6;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            width: 100%;
+        }
+
+        .expander {
+            background: linear-gradient(145deg, #35354a, #3f3f57);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            margin: 0 0 1rem 0;
+            overflow: hidden;
+        }
+
+        .expander > *:first-child {
+            margin-top: 0;
+        }
+
+        .expander > *:last-child {
+            margin-bottom: 0;
+        }
+
+        .expander-header {
+            background: linear-gradient(145deg, #35354a, #3f3f57);
+            color: #f3f4f6;
+            padding: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            user-select: none;
+        }
+
+        .expander-header:hover {
+            background: linear-gradient(145deg, #3f3f57, #494964);
+        }
+
+        .expander-content {
+            display: none;
+            padding: 0.5rem;
+            background: linear-gradient(145deg, #35354a, #3f3f57);
+        }
+
+        .expander-content.open {
+            display: block;
+        }
+
+        .expander-content > *:first-child {
+            margin-top: 0;
+        }
+
+        .expander-content > *:last-child {
+            margin-bottom: 0;
+        }
+
+        .expander-content h2 {
+            text-align: left;
+            margin: 0.25rem 0;
+        }
+
+        .expander-content .info-box,
+        .expander-content .success-box,
+        .expander-content .error-box,
+        .expander-content .warning-box {
+            margin-top: 0.25rem;
+        }
+
+        .machine-card {
+            background: linear-gradient(145deg, #2a2a3a, #36364d);
+            border-radius: 12px;
+            padding: 0.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 1rem;
+        }
+
+        .machine-card > *:first-child {
+            margin-top: 0;
+        }
+
+        .machine-card > *:last-child {
+            margin-bottom: 0;
+        }
+
+        .machine-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .machine-name {
+            margin: 0;
+            font-size: 1.5rem;
+            line-height: 1;
+        }
+
+        .machine-percentage {
+            margin-left: 12px;
+            font-weight: 700;
+            font-size: 1.5rem;
+            line-height: 1;
+        }
+
+        .details-text {
+            margin: 0.5rem 0;
+            color: #f3f4f6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.5rem;
+            background: linear-gradient(145deg, #1e1e2e, #252539);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th {
+            background: linear-gradient(145deg, #2a2a3a, #36364d);
+            padding: 0.5rem;
+            text-align: left;
+            font-weight: 600;
+            color: #60a5fa;
+            border-bottom: 2px solid rgba(96, 165, 250, 0.3);
+        }
+
+        td {
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        tr:hover {
+            background: rgba(96, 165, 250, 0.05);
+        }
+
+        .operator-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .operator-item:last-child {
+            border-bottom: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #60a5fa;
+            font-size: 1.2rem;
+        }
+
+        .sidebar-info {
+            background: linear-gradient(145deg, #2a2a3a, #323247);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body>
+    <h1>🏭 Tufflex Production Capacity Utilization</h1>
+
+    <!-- File Upload Section -->
+    <div id="uploadSection">
+        <div class="expander">
+            <div class="upload-section">
+                <input type="file" id="fileInput" class="upload-input" accept=".xlsx,.xls">
+                <label for="fileInput" class="upload-label">
+                    📂 Choose Excel File
+                </label>
+                <div id="uploadStatus"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Validation Section -->
+    <div id="validationSection" class="hidden">
+        <div class="expander">
+            <div class="expander-header" onclick="toggleExpander('validationContent')">
+                ✅ Data Validation Results
+            </div>
+            <div id="validationContent" class="expander-content">
+                <div id="validationResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboardSection" class="hidden">
+        <div class="two-column-layout">
+            <!-- Left Column -->
+            <div>
+                <!-- Year Selector -->
+                <h2>📅 Select Year</h2>
+                <div class="container">
+                    <div id="yearSelector" class="year-selector"></div>
+                </div>
+
+                <!-- Total Capacity -->
+                <h2>📊 Total Capacity</h2>
+                <div class="container">
+                    <div class="efficiency-input-row">
+                        <div class="efficiency-label">
+                            <strong>Efficiency (0.1 - 1.0)</strong>
+                        </div>
+                        <input type="number" id="efficiencyInput" class="efficiency-input"
+                               min="0.1" max="1.0" step="0.05" value="0.85">
+                    </div>
+                </div>
+
+                <div class="container">
+                    <div id="totalCapacityBar"></div>
+                    <div class="expander">
+                        <div class="expander-header" onclick="toggleExpander('capacityDetails')">
+                            📋 View Capacity Details
+                        </div>
+                        <div id="capacityDetails" class="expander-content"></div>
+                    </div>
+                </div>
+
+                <!-- Operator Time -->
+                <h2>👷 Operator Time</h2>
+                <div class="container">
+                    <div id="operatorTime"></div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div>
+                <h2 id="machineCapacityTitle">🔧 Machine Capacity</h2>
+                <div id="machineCards"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let analyzer = null;
+        let currentYear = null;
+        let allSheets = {};
+
+        // CapacityAnalyzer class
+        class CapacityAnalyzer {
+            constructor(efficiency = 1.0) {
+                this.efficiency = efficiency;
+                this.quantities = null;
+                this.avgPartsPerLot = null;
+                this.machiningRates = null;
+                this.setupRates = null;
+                this.vendorTime = null;
+                this.machineAllocation = null;
+                this.setupAllocation = null;
+                this.years = [];
+                this.partVendorTime = {};
+                this.operationToMachine = {};
+                this.machineToOperator = {};
+                this.availableCapacity = 252 * 18 * 60; // 272,160 minutes
+                this.validationResults = {};
+            }
+
+            loadData(sheets) {
+                allSheets = sheets;
+                const requiredSheets = ['Quantities', 'Avg Parts per Lot', 'Machining Rates',
+                                      'Setup Rates', 'Vendor Time', 'Machine Allocation', 'Setup Allocation'];
+
+                const missingSheets = requiredSheets.filter(sheet => !sheets[sheet]);
+                if (missingSheets.length > 0) {
+                    throw new Error(`Missing required sheets: ${missingSheets.join(', ')}`);
+                }
+
+                // Filter out rows with empty Part Number for sheets that have Part Number column
+                this.quantities = sheets['Quantities'].filter(r => r['Part Number']);
+                this.avgPartsPerLot = sheets['Avg Parts per Lot'].filter(r => r['Part Number']);
+                this.machiningRates = sheets['Machining Rates'].filter(r => r['Part Number']);
+                this.setupRates = sheets['Setup Rates'].filter(r => r['Part Number']);
+                this.vendorTime = sheets['Vendor Time'].filter(r => r['Part Number']);
+
+                // Filter out rows with empty Operations for Machine Allocation
+                this.machineAllocation = sheets['Machine Allocation'].filter(r => r['Operations'] && r['Operations'].toString().trim());
+
+                // Keep all rows for Setup Allocation (it typically has only 1-2 rows)
+                this.setupAllocation = sheets['Setup Allocation'];
+
+                // Get years (columns except Part Number)
+                this.years = Object.keys(this.quantities[0]).filter(col => col !== 'Part Number');
+
+                // Create mappings
+                this.createMappings();
+
+                // Validate data
+                this.validateData();
+            }
+
+            createMappings() {
+                // Vendor time mapping
+                this.vendorTime.forEach(row => {
+                    const partNum = row['Part Number'];
+                    const vendorDays = row['Vendor Time per Lot (Business Days)'];
+                    // Handle null/undefined/empty vendor days
+                    const vendorMinutes = (vendorDays != null && vendorDays !== '') ? vendorDays * 18 * 60 : 0;
+                    this.partVendorTime[partNum] = vendorMinutes;
+                });
+
+                // Operation to machine mapping
+                const machineColumns = Object.keys(this.machineAllocation[0])
+                    .filter(col => col !== 'Operations' && col !== 'Total');
+
+                this.machineAllocation.forEach(row => {
+                    const operation = row['Operations'];
+                    if (!operation) return;
+
+                    for (const machine of machineColumns) {
+                        if (row[machine] > 0) {
+                            this.operationToMachine[operation.toString().trim()] = machine.trim();
+                            break;
+                        }
+                    }
+                });
+
+                // Machine to operator mapping
+                const setupMachineColumns = Object.keys(this.setupAllocation[0])
+                    .filter(col => col !== '__EMPTY' && col !== 'Operator' && col !== 'Unnamed: 0');
+
+                setupMachineColumns.forEach(machine => {
+                    const operatorValue = this.setupAllocation[0][machine];
+                    if (typeof operatorValue === 'string') {
+                        this.machineToOperator[machine.trim()] = operatorValue.trim();
+                    } else if (operatorValue) {
+                        this.machineToOperator[machine.trim()] = `Operator ${operatorValue}`;
+                    }
+                });
+            }
+
+            validateData() {
+                this.validationResults = {
+                    partNumbers: { status: 'success', discrepancies: [] },
+                    operations: { status: 'success', discrepancies: [] },
+                    machines: { status: 'success', discrepancies: [] }
+                };
+
+                // Validate part numbers
+                const sheetsWithParts = {
+                    'Quantities': new Set(this.quantities.map(r => r['Part Number']).filter(p => p)),
+                    'Avg Parts per Lot': new Set(this.avgPartsPerLot.map(r => r['Part Number']).filter(p => p)),
+                    'Machining Rates': new Set(this.machiningRates.map(r => r['Part Number']).filter(p => p)),
+                    'Setup Rates': new Set(this.setupRates.map(r => r['Part Number']).filter(p => p)),
+                    'Vendor Time': new Set(this.vendorTime.map(r => r['Part Number']).filter(p => p))
+                };
+
+                const allParts = new Set();
+                Object.values(sheetsWithParts).forEach(parts => parts.forEach(p => allParts.add(p)));
+
+                allParts.forEach(part => {
+                    const missingIn = [];
+                    Object.entries(sheetsWithParts).forEach(([sheet, parts]) => {
+                        if (!parts.has(part)) missingIn.push(sheet);
+                    });
+                    if (missingIn.length > 0) {
+                        this.validationResults.partNumbers.discrepancies.push({
+                            item: part,
+                            missingIn: missingIn
+                        });
+                        this.validationResults.partNumbers.status = 'warning';
+                    }
+                });
+
+                // Validate operations
+                // Trim all column names and operation values to handle whitespace
+                const machiningOps = new Set(
+                    Object.keys(this.machiningRates[0])
+                        .filter(col => col !== 'Part Number')
+                        .map(col => col.trim())
+                );
+                const setupOps = new Set(
+                    Object.keys(this.setupRates[0])
+                        .filter(col => col !== 'Part Number')
+                        .map(col => col.trim())
+                );
+                const allocationOps = new Set(
+                    this.machineAllocation
+                        .map(r => r['Operations'])
+                        .filter(o => o)
+                        .map(o => o.toString().trim())
+                );
+
+                const allOps = new Set([...machiningOps, ...setupOps, ...allocationOps]);
+
+                allOps.forEach(op => {
+                    const missingIn = [];
+                    if (!machiningOps.has(op)) missingIn.push('Machining Rates');
+                    if (!setupOps.has(op)) missingIn.push('Setup Rates');
+                    if (!allocationOps.has(op)) missingIn.push('Machine Allocation');
+                    if (missingIn.length > 0) {
+                        this.validationResults.operations.discrepancies.push({
+                            item: op,
+                            missingIn: missingIn
+                        });
+                        this.validationResults.operations.status = 'warning';
+                    }
+                });
+
+                // Validate machines
+                const allocationMachines = new Set(
+                    Object.keys(this.machineAllocation[0])
+                        .filter(col => col !== 'Operations' && col !== 'Total')
+                        .map(col => col.trim())
+                );
+                const setupMachines = new Set(
+                    Object.keys(this.setupAllocation[0])
+                        .filter(col => col !== '__EMPTY' && col !== 'Operator' && col !== 'Unnamed: 0')
+                        .map(col => col.trim())
+                );
+
+                const allMachines = new Set([...allocationMachines, ...setupMachines]);
+
+                allMachines.forEach(machine => {
+                    const missingIn = [];
+                    if (!allocationMachines.has(machine)) missingIn.push('Machine Allocation');
+                    if (!setupMachines.has(machine)) missingIn.push('Setup Allocation');
+                    if (missingIn.length > 0) {
+                        this.validationResults.machines.discrepancies.push({
+                            item: machine,
+                            missingIn: missingIn
+                        });
+                        this.validationResults.machines.status = 'warning';
+                    }
+                });
+            }
+
+            calculateYearData(year) {
+                const outputRows = [];
+
+                if (!this.machiningRates || this.machiningRates.length === 0) {
+                    console.warn('No machining rates data');
+                    return outputRows;
+                }
+
+                const operations = Object.keys(this.machiningRates[0])
+                    .filter(col => col !== 'Part Number')
+                    .map(col => col.trim());
+
+                console.log(`Calculating data for ${year}. Found ${this.quantities.length} parts and ${operations.length} operations`);
+
+                this.quantities.forEach((row, idx) => {
+                    const partNumber = row['Part Number'];
+                    const quantity = row[year];
+
+                    // Skip if quantity is null, undefined, 0, or empty string
+                    if (quantity == null || quantity === 0 || quantity === '') return;
+
+                    const partsPerLot = this.avgPartsPerLot[idx]?.[year];
+                    if (partsPerLot == null || partsPerLot === 0) {
+                        console.warn(`Part ${partNumber}: invalid partsPerLot (${partsPerLot})`);
+                        return;
+                    }
+
+                    const numLots = Math.ceil(quantity / partsPerLot);
+
+                    operations.forEach(operation => {
+                        // Look up using original column name (might have extra spaces)
+                        const originalOp = Object.keys(this.machiningRates[idx] || {}).find(k => k.trim() === operation);
+                        const machiningRate = this.machiningRates[idx]?.[originalOp];
+
+                        // Skip if machining rate is null, undefined, 0, or empty
+                        if (machiningRate == null || machiningRate === 0 || machiningRate === '') return;
+
+                        const setupRateOp = Object.keys(this.setupRates[idx] || {}).find(k => k.trim() === operation);
+                        const setupRate = this.setupRates[idx]?.[setupRateOp] || 0;
+
+                        const onMachineMinutes = quantity * machiningRate / this.efficiency;
+                        const totalSetupTime = numLots * setupRate / this.efficiency;
+                        const setupPlusMachine = totalSetupTime + onMachineMinutes;
+
+                        const machine = this.operationToMachine[operation] || 'N/A';
+                        const operator = this.machineToOperator[machine] || 'N/A';
+
+                        outputRows.push({
+                            'Part Number': partNumber,
+                            'Operation': operation,
+                            'Machine': machine,
+                            'Operator': operator,
+                            'Quantity': quantity,
+                            'Machining Rate (minutes/part)': machiningRate,
+                            'Setup Rate (minutes/lot)': setupRate,
+                            'On-Machine Minutes': onMachineMinutes,
+                            'Number of Lots': numLots,
+                            'Total Setup Time (minutes)': totalSetupTime,
+                            'Setup Time + Machine Time': setupPlusMachine
+                        });
+                    });
+                });
+
+                console.log(`Generated ${outputRows.length} output rows for ${year}`);
+                return outputRows;
+            }
+
+            calculateCapacityForYear(year) {
+                const yearData = this.calculateYearData(year);
+
+                if (!yearData || yearData.length === 0) {
+                    console.log(`No data rows for year ${year}`);
+                    return null;
+                }
+
+                const machineTotals = {};
+                const machineMins = {};
+
+                // Calculate machine totals
+                const machines = [...new Set(yearData.map(r => r['Machine']).filter(m => m))];
+                machines.forEach(machine => {
+                    const machineRows = yearData.filter(r => r['Machine'] === machine);
+                    machineTotals[machine] = machineRows.reduce((sum, r) => sum + r['Setup Time + Machine Time'], 0);
+
+                    const opTotals = {};
+                    machineRows.forEach(r => {
+                        const op = r['Operation'];
+                        opTotals[op] = (opTotals[op] || 0) + r['Setup Time + Machine Time'];
+                    });
+                    machineMins[machine] = Math.min(...Object.values(opTotals));
+                });
+
+                // Calculate total vendor time
+                let totalVendorTime = 0;
+                const parts = [...new Set(yearData.map(r => r['Part Number']).filter(p => p))];
+                parts.forEach(partNumber => {
+                    if (this.partVendorTime[partNumber]) {
+                        const partRows = yearData.filter(r => r['Part Number'] === partNumber);
+                        if (partRows.length > 0) {
+                            const numLots = partRows[0]['Number of Lots'];
+                            totalVendorTime += this.partVendorTime[partNumber] * numLots;
+                        }
+                    }
+                });
+
+                // Find bottleneck
+                if (Object.keys(machineTotals).length > 0) {
+                    const maxMinutes = Math.max(...Object.values(machineTotals));
+                    const bottleneck = Object.keys(machineTotals).find(m => machineTotals[m] === maxMinutes);
+
+                    const otherMachinesMin = Object.keys(machineMins)
+                        .filter(m => m !== bottleneck)
+                        .reduce((sum, m) => sum + machineMins[m], 0);
+
+                    const totalMinutes = maxMinutes + otherMachinesMin + totalVendorTime;
+
+                    return {
+                        yearData: yearData,
+                        totalMinutes: totalMinutes,
+                        bottleneck: bottleneck,
+                        resourceType: 'Machine',
+                        maxMinutes: maxMinutes,
+                        otherMachinesMin: otherMachinesMin,
+                        vendorTime: totalVendorTime,
+                        machineTotals: machineTotals
+                    };
+                }
+
+                return null;
+            }
+
+            calculateAllYearsWithOverflow() {
+                const yearData = {};
+                const adjustedCapacity = {};
+                const overflowInfo = {};
+                const receivedFromFuture = {};
+
+                // First pass: calculate raw capacity
+                this.years.forEach(year => {
+                    yearData[year] = this.calculateCapacityForYear(year);
+                });
+
+                // Second pass: handle overflow
+                this.years.forEach(year => {
+                    if (!yearData[year]) {
+                        adjustedCapacity[year] = 0;
+                        overflowInfo[year] = { status: 'no_data', pulledFrom: [], overflow: 0 };
+                        receivedFromFuture[year] = 0;
+                        return;
+                    }
+
+                    const data = yearData[year];
+                    let totalMinutes = data.totalMinutes;
+                    let totalCapacity = totalMinutes / this.availableCapacity;
+
+                    overflowInfo[year] = { status: 'normal', pulledFrom: [], overflow: 0 };
+                    if (!receivedFromFuture[year]) receivedFromFuture[year] = 0;
+
+                    if (totalCapacity >= 1.0) {
+                        let overflow = totalMinutes - this.availableCapacity;
+                        overflowInfo[year].status = 'over_capacity';
+                        overflowInfo[year].overflow = overflow;
+
+                        let pulledTotal = 0;
+                        const prevYears = this.years.filter(y => y < year).reverse();
+
+                        for (const prevYear of prevYears) {
+                            if (adjustedCapacity[prevYear] !== undefined) {
+                                const availableInPrev = this.availableCapacity - adjustedCapacity[prevYear];
+                                if (availableInPrev > 0) {
+                                    const pullAmount = Math.min(overflow, availableInPrev);
+                                    adjustedCapacity[prevYear] += pullAmount;
+
+                                    if (!receivedFromFuture[prevYear]) receivedFromFuture[prevYear] = 0;
+                                    receivedFromFuture[prevYear] += pullAmount;
+
+                                    overflow -= pullAmount;
+                                    pulledTotal += pullAmount;
+                                    overflowInfo[year].pulledFrom.push({
+                                        year: prevYear,
+                                        amount: pullAmount,
+                                        newCapacity: adjustedCapacity[prevYear] / this.availableCapacity
+                                    });
+                                    if (overflow <= 0) break;
+                                }
+                            }
+                        }
+
+                        adjustedCapacity[year] = totalMinutes - pulledTotal;
+                        overflowInfo[year].overflow = overflow;
+
+                        if (overflow > 0) {
+                            overflowInfo[year].status = 'critical';
+                        }
+                    } else {
+                        adjustedCapacity[year] = totalMinutes;
+                    }
+                });
+
+                return { yearData, adjustedCapacity, overflowInfo, receivedFromFuture };
+            }
+        }
+
+        // File upload handler
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const uploadLabel = document.querySelector('.upload-label');
+            uploadLabel.textContent = '⏳ Loading and processing file...';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', defval: null });
+
+                    const sheets = {};
+                    workbook.SheetNames.forEach(sheetName => {
+                        sheets[sheetName] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: null });
+                    });
+
+                    console.log('Loaded sheets:', Object.keys(sheets));
+                    console.log('Sample Quantities data:', sheets['Quantities']?.slice(0, 2));
+
+                    analyzer = new CapacityAnalyzer(0.85);
+                    analyzer.loadData(sheets);
+
+                    uploadLabel.textContent = `✅ File uploaded: ${file.name}`;
+
+                    console.log('Years detected:', analyzer.years);
+                    console.log('Validation results:', analyzer.validationResults);
+
+                    renderValidation();
+                    renderDashboard();
+
+                } catch (error) {
+                    console.error('Error loading file:', error);
+                    uploadLabel.textContent = '❌ Error loading file';
+                    document.getElementById('uploadStatus').innerHTML =
+                        `<div class="error-box">${error.message}<br><br>Check browser console (F12) for details</div>`;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function renderValidation() {
+            const validationSection = document.getElementById('validationSection');
+            const validationResults = document.getElementById('validationResults');
+
+            const hasErrors = analyzer.validationResults.partNumbers.status !== 'success' ||
+                            analyzer.validationResults.operations.status !== 'success' ||
+                            analyzer.validationResults.machines.status !== 'success';
+
+            let html = '<div style="margin: 0.25rem 0;">';
+
+            // Part Numbers
+            html += '<h2>📦 Part Numbers Validation</h2>';
+            if (analyzer.validationResults.partNumbers.status === 'success') {
+                html += '<div class="success-box">✅ All part numbers are consistent across all sheets</div>';
+            } else {
+                html += '<div class="warning-box">⚠️ Part number discrepancies found:</div>';
+                analyzer.validationResults.partNumbers.discrepancies.slice(0, 5).forEach(disc => {
+                    html += `<div class="error-box"><strong>${disc.item}</strong> missing in: ${disc.missingIn.join(', ')}</div>`;
+                });
+                if (analyzer.validationResults.partNumbers.discrepancies.length > 5) {
+                    html += `<div class="info-box">...and ${analyzer.validationResults.partNumbers.discrepancies.length - 5} more</div>`;
+                }
+            }
+
+            // Operations
+            html += '<h2>⚙️ Operations Validation</h2>';
+            if (analyzer.validationResults.operations.status === 'success') {
+                html += '<div class="success-box">✅ All operations are consistent across all sheets</div>';
+            } else {
+                html += '<div class="warning-box">⚠️ Operation discrepancies found:</div>';
+                analyzer.validationResults.operations.discrepancies.forEach(disc => {
+                    html += `<div class="error-box"><strong>${disc.item}</strong> missing in: ${disc.missingIn.join(', ')}</div>`;
+                });
+            }
+
+            // Machines
+            html += '<h2>🔧 Machines Validation</h2>';
+            if (analyzer.validationResults.machines.status === 'success') {
+                html += '<div class="success-box">✅ All machines are consistent across all sheets</div>';
+            } else {
+                html += '<div class="warning-box">⚠️ Machine discrepancies found:</div>';
+                analyzer.validationResults.machines.discrepancies.forEach(disc => {
+                    html += `<div class="error-box"><strong>${disc.item}</strong> missing in: ${disc.missingIn.join(', ')}</div>`;
+                });
+            }
+
+            html += '</div>';
+            validationResults.innerHTML = html;
+
+            validationSection.classList.remove('hidden');
+            if (hasErrors) {
+                document.getElementById('validationContent').classList.add('open');
+            }
+        }
+
+        function renderDashboard() {
+            // Show dashboard
+            document.getElementById('dashboardSection').classList.remove('hidden');
+
+            if (!analyzer.years || analyzer.years.length === 0) {
+                console.error('No years found in data');
+                document.getElementById('uploadStatus').innerHTML =
+                    `<div class="error-box">❌ No year columns found. Make sure Quantities sheet has year columns (e.g., "2024 Qty", "2025 Qty")</div>`;
+                return;
+            }
+
+            console.log('Rendering dashboard with years:', analyzer.years);
+
+            // Render year selector
+            const yearSelector = document.getElementById('yearSelector');
+            yearSelector.innerHTML = '';
+
+            analyzer.years.forEach(year => {
+                const button = document.createElement('button');
+                button.className = 'year-button';
+                button.textContent = year.replace(' Qty', '');
+                button.onclick = () => selectYear(year);
+                yearSelector.appendChild(button);
+            });
+
+            // Set initial year
+            currentYear = analyzer.years[0];
+            selectYear(currentYear);
+
+            // Add efficiency change listener
+            document.getElementById('efficiencyInput').addEventListener('change', function() {
+                const newEfficiency = parseFloat(this.value);
+                if (newEfficiency >= 0.1 && newEfficiency <= 1.0) {
+                    analyzer.efficiency = newEfficiency;
+                    selectYear(currentYear);
+                }
+            });
+        }
+
+        function selectYear(year) {
+            console.log(`Selecting year: ${year}`);
+            currentYear = year;
+
+            // Update year buttons
+            document.querySelectorAll('.year-button').forEach((btn, idx) => {
+                if (analyzer.years[idx] === year) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Calculate data
+            console.log('Calculating all years with overflow...');
+            const { yearData, adjustedCapacity, overflowInfo, receivedFromFuture } =
+                analyzer.calculateAllYearsWithOverflow();
+
+            console.log('Year data:', yearData);
+            console.log('Adjusted capacity:', adjustedCapacity);
+
+            const yearInfo = yearData[year];
+            if (!yearInfo) {
+                console.warn(`No data for year ${year}`);
+                document.getElementById('totalCapacityBar').innerHTML =
+                    '<div class="info-box">No data available for this year</div>';
+                document.getElementById('operatorTime').innerHTML =
+                    '<div class="info-box">No data available for this year</div>';
+                document.getElementById('machineCards').innerHTML =
+                    '<div class="info-box">No data available for this year</div>';
+                return;
+            }
+
+            console.log(`Year ${year} info:`, yearInfo);
+
+            // Render total capacity
+            renderTotalCapacity(yearInfo, adjustedCapacity[year], overflowInfo[year], receivedFromFuture[year]);
+
+            // Render operator time
+            renderOperatorTime(yearInfo.yearData);
+
+            // Render machine cards
+            renderMachineCards(yearInfo);
+
+            // Update machine capacity title
+            document.getElementById('machineCapacityTitle').textContent =
+                `🔧 Machine Capacity - ${year.replace(' Qty', '')}`;
+        }
+
+        function renderTotalCapacity(yearInfo, adjustedMinutes, overflowData, receivedMinutes) {
+            const totalCapacity = adjustedMinutes / analyzer.availableCapacity;
+            const color = totalCapacity < 0.8 ? '#10b981' : (totalCapacity <= 1.0 ? '#f59e0b' : '#ef4444');
+
+            let html = `
+                <div class="capacity-bar-container">
+                    <div class="capacity-percentage" style="color: ${color};">
+                        ${(totalCapacity * 100).toFixed(1)}%
+                    </div>
+                    <div class="capacity-bar">
+                        <div class="capacity-bar-fill" style="width: ${Math.min(totalCapacity * 100, 100)}%; background: ${color};"></div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('totalCapacityBar').innerHTML = html;
+
+            // Render capacity details
+            let detailsHtml = `
+                <div class="details-text"><strong>Bottleneck Machine:</strong> ${yearInfo.bottleneck} - ${yearInfo.maxMinutes.toLocaleString()} minutes</div>
+                <div class="details-text"><strong>Other Machines Min Sum:</strong> ${yearInfo.otherMachinesMin.toLocaleString()} minutes</div>
+                <div class="details-text"><strong>Vendor Time:</strong> ${yearInfo.vendorTime.toLocaleString()} minutes</div>
+            `;
+
+            if (receivedMinutes > 0) {
+                detailsHtml += `<div class="details-text"><strong>Total Capacity:</strong> ${(totalCapacity * 100).toFixed(2)}% (${adjustedMinutes.toLocaleString()} / ${analyzer.availableCapacity.toLocaleString()} minutes) - <em>${receivedMinutes.toLocaleString()} minutes pulled from future years</em></div>`;
+            } else {
+                detailsHtml += `<div class="details-text"><strong>Total Capacity:</strong> ${(totalCapacity * 100).toFixed(2)}% (${adjustedMinutes.toLocaleString()} / ${analyzer.availableCapacity.toLocaleString()} minutes)</div>`;
+            }
+
+            if (overflowData.status === 'over_capacity' || overflowData.status === 'critical') {
+                detailsHtml += '<hr style="margin: 0.5rem 0; border-color: rgba(255,255,255,0.1);">';
+                detailsHtml += '<div class="details-text"><strong>⚠️ Overflow Distribution:</strong></div>';
+
+                if (overflowData.pulledFrom.length > 0) {
+                    overflowData.pulledFrom.forEach(pull => {
+                        detailsHtml += `<div class="details-text">→ Pulled <strong>${pull.amount.toLocaleString()} minutes</strong> into <strong>${pull.year}</strong> (now at ${(pull.newCapacity * 100).toFixed(1)}%)</div>`;
+                    });
+                }
+
+                if (overflowData.overflow > 0) {
+                    detailsHtml += `<div class="error-box"><strong>CRITICAL:</strong> Remaining overflow of <strong>${overflowData.overflow.toLocaleString()} minutes</strong> cannot be accommodated!</div>`;
+                }
+
+                detailsHtml += `<div class="details-text"><strong>Adjusted Capacity:</strong> ${(totalCapacity * 100).toFixed(2)}% (${adjustedMinutes.toLocaleString()} / ${analyzer.availableCapacity.toLocaleString()} minutes)</div>`;
+                detailsHtml += `<div class="details-text"><strong>Raw Total:</strong> ${yearInfo.totalMinutes.toLocaleString()} minutes (${(yearInfo.totalMinutes / analyzer.availableCapacity * 100).toFixed(2)}%)</div>`;
+            }
+
+            document.getElementById('capacityDetails').innerHTML = detailsHtml;
+        }
+
+        function renderOperatorTime(yearData) {
+            const operatorData = {};
+
+            yearData.forEach(row => {
+                const operator = row['Operator'];
+                if (operator && typeof operator === 'string') {
+                    const operators = operator.split(',').map(op => op.trim());
+                    const numOps = operators.length;
+                    const setupTimePerOp = row['Total Setup Time (minutes)'] / numOps;
+
+                    operators.forEach(op => {
+                        operatorData[op] = (operatorData[op] || 0) + setupTimePerOp;
+                    });
+                }
+            });
+
+            let html = '';
+            if (Object.keys(operatorData).length > 0) {
+                const sortedOperators = Object.entries(operatorData).sort((a, b) => b[1] - a[1]);
+                sortedOperators.forEach(([operator, setupTime]) => {
+                    html += `<div class="operator-item"><strong>${operator}:</strong> ${setupTime.toLocaleString()} minutes</div>`;
+                });
+            } else {
+                html = '<div class="info-box">No operator data available</div>';
+            }
+
+            document.getElementById('operatorTime').innerHTML = html;
+        }
+
+        function renderMachineCards(yearInfo) {
+            const yearData = yearInfo.yearData;
+            const machines = [...new Set(yearData.map(r => r['Machine']).filter(m => m))].sort();
+
+            let html = '';
+
+            machines.forEach(machine => {
+                const machineRows = yearData.filter(r => r['Machine'] === machine);
+                const totalOnMachine = machineRows.reduce((sum, r) => sum + r['On-Machine Minutes'], 0);
+                const totalSetup = machineRows.reduce((sum, r) => sum + r['Total Setup Time (minutes)'], 0);
+                const totalCombined = machineRows.reduce((sum, r) => sum + r['Setup Time + Machine Time'], 0);
+
+                const capacityPct = totalCombined / analyzer.availableCapacity;
+                const color = capacityPct < 0.8 ? '#10b981' : (capacityPct <= 1.0 ? '#f59e0b' : '#ef4444');
+
+                html += `
+                    <div class="machine-card">
+                        <div class="machine-header">
+                            <h3 class="machine-name">⚙️ ${machine}</h3>
+                            <span class="machine-percentage" style="color: ${color};">
+                                ${(capacityPct * 100).toFixed(1)}%
+                            </span>
+                        </div>
+                        <div class="capacity-bar">
+                            <div class="capacity-bar-fill" style="width: ${Math.min(capacityPct * 100, 100)}%; background: ${color};"></div>
+                        </div>
+                        <div class="expander" style="margin-top: 0.5rem;">
+                            <div class="expander-header" onclick="toggleExpander('machine_${machine.replace(/\s+/g, '_')}')">
+                                📋 View Machine Details
+                            </div>
+                            <div id="machine_${machine.replace(/\s+/g, '_')}" class="expander-content">
+                                ${renderMachineDetails(machine, machineRows, totalOnMachine, totalSetup, totalCombined)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('machineCards').innerHTML = html;
+        }
+
+        function renderMachineDetails(machine, machineRows, totalOnMachine, totalSetup, totalCombined) {
+            const operator = analyzer.machineToOperator[machine] || 'N/A';
+
+            let html = `
+                <div class="details-text">
+                    <strong>Operator:</strong> ${operator} |
+                    <strong>On-Machine Minutes:</strong> ${totalOnMachine.toLocaleString()} |
+                    <strong>Setup Time:</strong> ${totalSetup.toLocaleString()} |
+                    <strong>Combined Time:</strong> ${totalCombined.toLocaleString()}
+                </div>
+            `;
+
+            if (machineRows.length > 0) {
+                const sortedRows = machineRows.sort((a, b) =>
+                    b['Setup Time + Machine Time'] - a['Setup Time + Machine Time']
+                );
+
+                html += `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Part Number</th>
+                                <th>Operation</th>
+                                <th>Quantity</th>
+                                <th>On-Machine Minutes</th>
+                                <th>Number of Lots</th>
+                                <th>Total Setup Time (minutes)</th>
+                                <th>Setup Time + Machine Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                sortedRows.forEach(row => {
+                    html += `
+                        <tr>
+                            <td>${row['Part Number']}</td>
+                            <td>${row['Operation']}</td>
+                            <td>${Math.round(row['Quantity']).toLocaleString()}</td>
+                            <td>${Math.round(row['On-Machine Minutes']).toLocaleString()}</td>
+                            <td>${Math.round(row['Number of Lots']).toLocaleString()}</td>
+                            <td>${Math.round(row['Total Setup Time (minutes)']).toLocaleString()}</td>
+                            <td>${Math.round(row['Setup Time + Machine Time']).toLocaleString()}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            return html;
+        }
+
+        function toggleExpander(id) {
+            const content = document.getElementById(id);
+            content.classList.toggle('open');
+        }
+    </script>
+</body>
+</html>
