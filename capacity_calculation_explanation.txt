@@ -1,0 +1,101 @@
+CAPACITY UTILIZATION CALCULATION EXPLANATION
+==============================================
+
+OVERVIEW
+--------
+The dashboard calculates whether Tufflex production quantities are "deliverable within the year" by comparing required production time against available manufacturing capacity. The capacity utilization percentage shows how much of the year's available time is consumed by the planned production.
+
+INPUT DATA
+----------
+The calculation uses 7 sheets from inputs.xlsx:
+1. Quantities - Part numbers and yearly production quantities
+2. Avg Parts per Lot - How many parts are produced per manufacturing lot
+3. Machining Rates - Time required per part (minutes/part)
+4. Setup Rates - Setup time required per lot (minutes/lot)
+5. Vendor Time - External processing time (business days per lot)
+6. Machine Allocation - Which machine performs each operation
+7. Setup Allocation - Which operator(s) run each machine
+
+CAPACITY CALCULATION STEPS
+---------------------------
+
+Step 1: Calculate Time Per Part/Operation
+For each part number and operation:
+- Number of lots = CEILING(quantity ÷ parts_per_lot)
+- On-machine time = quantity × machining_rate ÷ efficiency
+- Setup time = number_of_lots × setup_rate ÷ efficiency
+- Combined time = on-machine time + setup time
+  (Setup and machining happen in SERIES on the same machine)
+
+Step 2: Aggregate By Machine
+For each machine:
+- Total time = SUM(all combined times for parts using this machine)
+- This represents the total minutes the machine must run
+
+Step 3: Find Bottleneck
+The bottleneck is the constraint that limits overall capacity:
+- Bottleneck machine = machine with MAXIMUM total time
+- Other machines' minimum = SUM(minimum operation time for non-bottleneck machines)
+  (Other machines only need to run long enough for their shortest operation)
+- Total vendor time = SUM(vendor_time × number_of_lots) for all parts
+
+Step 4: Calculate Total Capacity
+Total capacity minutes = bottleneck_time + other_machines_min + vendor_time
+
+Step 5: Calculate Capacity Percentage
+Available capacity = 252 business days × 18 hours × 60 minutes = 272,160 min/year
+Capacity % = total_capacity_minutes ÷ 272,160
+
+EFFICIENCY FACTOR
+-----------------
+The efficiency factor (0.1 to 1.0) adjusts for real-world conditions:
+- Efficiency = 1.0 means machines and setup operations run at 100% theoretical speed
+- Efficiency = 0.85 means machines and setup operations run at 85% speed (15% slower)
+- Lower efficiency INCREASES required time (divides rates by efficiency)
+
+DELIVERABILITY AND OVERFLOW DISTRIBUTION
+-----------------------------------------
+
+The Core Problem:
+If a year shows 120% capacity utilization, it means you need 120% of the year's available time to complete that year's quantities. This is impossible - you cannot deliver everything within that year.
+
+The Overflow Solution:
+The dashboard implements "early start" logic to maximize deliverability:
+
+1. IDENTIFY OVERFLOW
+   - Any year with capacity ≥100% has overflow
+   - Overflow amount = total_minutes - available_capacity (272,160)
+
+2. PULL WORK INTO PRIOR YEARS
+   - Work backwards through prior years
+   - For each prior year with available capacity:
+     - Pull as much overflow as possible into that year
+     - Track the amount pulled and update both years' capacity
+
+3. CALCULATE ADJUSTED CAPACITY
+   - Adjusted capacity = original capacity - minutes_pulled_to_prior_years
+   - This represents the capacity after early-starting work
+
+4. DELIVERABILITY OUTCOMES
+   - Adjusted capacity <100%: All quantities are deliverable
+   - Adjusted capacity ≥100% after early start: Some quantities CANNOT be delivered
+   - Dashboard shows CRITICAL warning for undeliverable quantities
+
+Example:
+- 2025 shows 110% capacity (10% overflow = 27,216 minutes)
+- 2024 has 85% capacity (15% available = 40,824 minutes)
+- System pulls 27,216 minutes from 2025 into 2024
+- Result:
+  - 2024: Now at 95% capacity (deliverable)
+  - 2025: Now at 100% capacity (deliverable with early start)
+  - ALL quantities are deliverable when 2024 starts some 2025 work early
+
+WHY THIS MATTERS
+-----------------
+The adjusted capacity percentage (shown after overflow distribution) tells you:
+
+- <100%: Production is feasible within the year
+- 100%: Production is feasible only with early starts from prior years
+- >100%: Production is NOT feasible - quantities must be reduced, efficiency improved, or capacity added
+
+The dashboard's overflow distribution shows you exactly which prior years would need to start work early, by how much, and whether this is sufficient to make all quantities deliverable.
