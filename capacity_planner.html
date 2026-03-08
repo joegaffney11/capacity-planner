@@ -486,8 +486,8 @@
         let currentYear = null;
         let allSheets = {};
 
-        // Column name for part numbers - update here if the Excel column is renamed
-        const PART_NUMBER_COL = 'Associated Part Numbers';
+        // Column name for part numbers - auto-detected from first column of Quantities sheet
+        let PART_NUMBER_COL = null;
 
         // CapacityAnalyzer class
         class CapacityAnalyzer {
@@ -517,6 +517,15 @@
                 if (missingSheets.length > 0) {
                     throw new Error(`Missing required sheets: ${missingSheets.join(', ')}`);
                 }
+
+                // Auto-detect part number column from first column of Quantities sheet
+                PART_NUMBER_COL = Object.keys(sheets['Quantities'][0]).find(col =>
+                    isNaN(col) &&
+                    !col.startsWith('__EMPTY') &&
+                    !col.startsWith('_EMPTY') &&
+                    !col.startsWith('Unnamed:') &&
+                    col.trim() !== ''
+                );
 
                 // Filter out rows with empty part number for sheets that have part number column
                 this.quantities     = sheets['Quantities'].filter(r => r[PART_NUMBER_COL]);
